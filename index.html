@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swing Physics: Driven vs. Parametric Oscillator (Case Model)</title>
+  <meta name="description" content="Interactive physics simulation based on Prof. William B. Case's 'Physics of Pumping a Swing' demonstrating how a seated swing operates as a resonantly driven oscillator from a dead stop.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Hero Header -->
+    <header class="hero">
+      <div class="hero-badge">PHYSICS OF PUMPING A SWING &middot; PROF. WILLIAM B. CASE MODEL</div>
+      <h1>Can You Swing from a <span class="gradient-text">Complete Standstill?</span></h1>
+      <p class="hero-subtitle">
+        Teacher says: <em>"Without touching the ground or an initial push, it's impossible to swing."</em><br>
+        Physics says: <strong class="highlight-yes">100% POSSIBLE</strong>.
+        As proven in <a href="https://www.youtube.com/watch?v=MbWhKFIayp4" target="_blank" rel="noopener" class="video-ref-link">Prof. William Case's video ↗</a> &amp; <em>Am. J. Phys.</em> (1990), a seated swinger is a <strong>Driven Harmonic Oscillator</strong>.
+      </p>
+    </header>
+
+    <!-- Main Simulation Area -->
+    <main class="simulation-area">
+      <!-- Simulation Canvas Container -->
+      <div class="sim-container">
+        <canvas id="simCanvas"></canvas>
+
+        <!-- Live Phase Tag -->
+        <div id="phaseIndicator" class="phase-indicator">
+          <div class="phase-dot"></div>
+          <span id="phaseText">Stationary — Ready to Drive</span>
+        </div>
+
+        <!-- Telemetry HUD Overlay -->
+        <div class="hud-overlay">
+          <div class="hud-item">
+            <span class="hud-label">Swing Angle (&theta;)</span>
+            <span id="hudAngle" class="hud-val">0.0°</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Body Tilt (&phi;)</span>
+            <span id="hudBodyTilt" class="hud-val">0.0°</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Driving Torque D(t)</span>
+            <span id="hudTorque" class="hud-val">0.0 N·m</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Power Delivered</span>
+            <span id="hudPower" class="hud-val">0.0 W</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Oscillator Mode</span>
+            <span id="hudOscMode" class="hud-val mode-driven">Driven (&omega;<sub>0</sub>)</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Ground Clearance</span>
+            <span id="hudGround" class="hud-val clearance-ok">45.0 cm (AIRBORNE)</span>
+          </div>
+        </div>
+
+        <!-- Amplitude Progress Meter -->
+        <div class="amplitude-meter">
+          <div class="meter-header">
+            <span class="meter-label">Swing Amplitude</span>
+            <span id="meterValue" class="meter-value">0.0°</span>
+          </div>
+          <div class="meter-bar-track">
+            <div id="meterBar" class="meter-bar-fill" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls Sidebar -->
+      <div class="controls-panel">
+        <div class="controls-header">
+          <div class="controls-icon">⚙️</div>
+          <h2>Simulation Controls</h2>
+        </div>
+
+        <!-- Primary Actions -->
+        <div class="control-group">
+          <button id="btnStart" class="btn btn-primary btn-glow">
+            <span class="btn-icon">▶</span> Start Auto-Pumping
+          </button>
+          <button id="btnReset" class="btn btn-secondary">
+            <span class="btn-icon">↺</span> Reset to Dead Stop
+          </button>
+        </div>
+
+        <!-- Oscillator Model Selector (Case's core video premise) -->
+        <div class="control-group model-selector-group">
+          <div class="group-title">Oscillator Theory Model</div>
+          <div class="model-toggle-pills">
+            <button id="btnModeDriven" class="btn-pill active" title="Case (1990): Seated swinger rocks at swing frequency omega_0">
+              Driven (&omega;<sub>0</sub>) &mdash; Seated
+            </button>
+            <button id="btnModeParametric" class="btn-pill" title="Textbook model: standing/squatting at 2 omega_0">
+              Parametric (2&omega;<sub>0</sub>) &mdash; Squat
+            </button>
+          </div>
+          <p class="model-note" id="modelNote">
+            <strong>Case's Insight:</strong> A seated swinger rocks at the natural frequency <strong>&omega;<sub>0</sub></strong>, injecting energy as a <em>driven oscillator</em>, NOT a 2&omega;<sub>0</sub> parametric oscillator!
+          </p>
+        </div>
+
+        <!-- Manual Interactive Mode -->
+        <div class="control-group manual-group">
+          <div class="group-title">
+            <span>🎮 Manual Test (Prove it yourself!)</span>
+          </div>
+          <p class="manual-hint">Click or press <strong>← / →</strong> (or <strong>A / D</strong>) to tilt body &amp; legs:</p>
+          <div class="manual-btn-row">
+            <button id="btnTuckLegs" class="btn btn-manual" title="Tilt forward / tuck legs (Left Arrow)">
+              ◀ Lean Forward / Tuck
+            </button>
+            <button id="btnKickLegs" class="btn btn-manual btn-accent" title="Recline back / kick legs (Right Arrow)">
+              Recline &amp; Kick ▶
+            </button>
+          </div>
+        </div>
+
+        <!-- Visual Toggles -->
+        <div class="control-group">
+          <div class="group-title">Display Overlays</div>
+          <label class="toggle-label">
+            <span>Show Force Vectors &amp; Torques</span>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggleForces" checked>
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+          <label class="toggle-label">
+            <span>Show Center of Mass (&Delta;x<sub>COM</sub>)</span>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggleCOM" checked>
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+          <label class="toggle-label">
+            <span>Show Real-Time Resonance Waveform</span>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggleWaveform" checked>
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+          <label class="toggle-label">
+            <span>Show Explanatory Speech Bubbles</span>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggleExplanations" checked>
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+          <label class="toggle-label">
+            <span>Slow Motion (0.4x)</span>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggleSlowMo">
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+        </div>
+
+        <!-- Slider -->
+        <div class="control-group">
+          <div class="slider-label">
+            <span>Pumping Intensity</span>
+            <span id="pumpValue" class="slider-value">70%</span>
+          </div>
+          <input type="range" id="pumpStrength" min="25" max="100" value="70" class="styled-slider">
+        </div>
+
+        <!-- Quick Video Link & Reference Card -->
+        <div class="info-card video-card">
+          <div class="info-card-header">
+            <span class="info-icon">📺</span>
+            <span>Video Reference</span>
+          </div>
+          <p>
+            Based on <a href="https://www.youtube.com/watch?v=MbWhKFIayp4" target="_blank" rel="noopener" class="video-ref-link"><strong>"Physics of Pumping a Swing"</strong></a> by Prof. William B. Case (author of the 1990 &amp; 1996 <em>American Journal of Physics</em> papers).
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Deep-Dive Physics Explanation Section -->
+    <section class="explanation-section">
+      <h2 class="section-title">Case's Physics Breakdown: <span class="gradient-text">Driven vs. Parametric Oscillator</span></h2>
+
+      <div class="steps-grid">
+        <div class="step-card" data-step="1">
+          <div class="step-number">STEP 01</div>
+          <div class="step-icon">🛑</div>
+          <h3>Zero External Force (Rest)</h3>
+          <p>The swing hangs vertically (&theta; = 0°). Feet dangle in mid-air (no ground contact). Both linear and angular momentum about the pivot are zero.</p>
+        </div>
+
+        <div class="step-card" data-step="2">
+          <div class="step-number">STEP 02</div>
+          <div class="step-icon">🔄</div>
+          <h3>Internal Body Rotation (&phi;)</h3>
+          <p>The rider rotates their torso back and extends legs forward. This changes body angle &phi;(t). By conservation of angular momentum, the swing chair must rotate in response: <code>&tau;<sub>inertial</sub> = -I<sub>body</sub> &phi;&uml;</code>.</p>
+        </div>
+
+        <div class="step-card" data-step="3">
+          <div class="step-number">STEP 03</div>
+          <div class="step-icon">⚖️</div>
+          <h3>Gravitational Tilt Torque</h3>
+          <p>Tilting the body shifts the center of mass away from the suspension line by distance <code>d&middot;sin(&phi;)</code>. Downward gravity immediately exerts a driving torque: <code>&tau;<sub>tilt</sub> = -m&middot;g&middot;d&middot;sin(&theta;+&phi;)</code>. Motion starts!</p>
+        </div>
+
+        <div class="step-card" data-step="4">
+          <div class="step-number">STEP 04</div>
+          <div class="step-icon">📈</div>
+          <h3>Resonant Energy Transfer</h3>
+          <p>The swinger rocks their body at the natural frequency <strong>&omega;<sub>0</sub></strong>. Net power <code>P(t) = D(t)&middot;&omega; &gt; 0</code> continuously transfers muscular energy into mechanical swing energy, rapidly amplifying the swing arc.</p>
+        </div>
+      </div>
+
+      <!-- Formal Equation Card from Case & Swanson (1990) -->
+      <div class="verdict-card">
+        <div class="verdict-badge">CASE &amp; SWANSON (1990) EQUATION OF MOTION</div>
+        <h3>The Seated Driven Swing Equation</h3>
+        <p class="math-formula">
+          <code>I<sub>total</sub> &theta;&uml; + b &theta;&#775; + M g L sin(&theta;) = D(t)</code>
+        </p>
+        <p class="math-formula math-sub">
+          <code>D(t) = - I<sub>body</sub> &phi;&uml;(t) - m<sub>body</sub> g d sin(&theta; + &phi;(t))</code>
+        </p>
+        <p>
+          <strong>Why Your Teacher Was Wrong:</strong><br>
+          At dead stop (&theta; = 0, &theta;&#775; = 0): as soon as the rider activates core muscles to tilt their body (&phi; &ne; 0 or &phi;&uml; &ne; 0), the driving term <strong>D(0) &ne; 0</strong>.<br>
+          Therefore, <strong>&theta;&uml;(0) = D(0) / I<sub>total</sub> &ne; 0</strong>. The swing <em>must</em> begin moving!
+        </p>
+        <div class="verdict-refs">
+          <span class="ref-tag">YouTube: "Physics of Pumping a Swing" (Case) ✓</span>
+          <span class="ref-tag">Am. J. Phys. 58, 463 (Case &amp; Swanson 1990) ✓</span>
+          <span class="ref-tag">Resonant Driven Oscillator (&omega; = &omega;<sub>0</sub>) ✓</span>
+          <span class="ref-tag">Newton's 3rd Law &amp; Conservation of Angular Momentum ✓</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Argimchoq (Swing) Physics Simulator &middot; Based on the published research of Prof. William B. Case.</p>
+    </footer>
+  </div>
+
+  <script src="simulation.js"></script>
+</body>
+</html>
